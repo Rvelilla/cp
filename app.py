@@ -45,7 +45,6 @@ def display_pdf(base64_pdf, nombre_archivo="documento.pdf"):
         bytes_pdf = base64.b64decode(base64_pdf)
         st.info("💡 Por políticas de seguridad del navegador, utilice el botón inferior para visualizar o descargar el documento de forma segura.")
         
-        # 💡 UX MEJORA: Se eliminó el ancho completo para que parezca un botón de descarga tradicional
         st.download_button(
             label=f"📥 Abrir / Descargar: {nombre_archivo}",
             data=bytes_pdf,
@@ -68,7 +67,6 @@ if not st.session_state.logged_in:
             st.subheader("Iniciar Sesión")
             usuario_input = st.text_input("Usuario")
             password_input = st.text_input("Contraseña", type="password")
-            # 💡 Aquí sí se justifica el ancho completo para el login
             submit_button = st.form_submit_button("Ingresar", use_container_width=True)
             
             if submit_button:
@@ -123,7 +121,6 @@ else:
                 archivo = st.file_uploader("Subir Contrato Firmado (PDF)", type=['pdf'])
             
             st.write("") 
-            # 💡 UX MEJORA: Botón de tamaño natural, no expandido
             enviar = st.form_submit_button("Enviar a Verificación")
             
             if enviar:
@@ -163,14 +160,12 @@ else:
             st.info("No tienes tareas pendientes en tu bandeja de entrada en este momento.")
         else:
             for i, contrato in enumerate(pendientes):
-                # 💡 UX MEJORA: Un título de expediente más robusto
                 with st.expander(f"📂 EXPEDIENTE: {contrato['id']} | Asesor: {contrato['asesor']}"):
                     col_info, col_visor = st.columns([1, 1]) 
                     
                     with col_info:
                         st.subheader("📋 Datos del Proceso")
                         
-                        # 💡 UX MEJORA: Uso de métricas y columnas internas para mejor jerarquía visual
                         col_m1, col_m2 = st.columns(2)
                         with col_m1:
                             st.write(f"**Asesor:** {contrato['asesor']}")
@@ -187,7 +182,6 @@ else:
                         if rol_actual == "Cumplimiento":
                             coment = st.text_area("Notas de Verificación", key=f"n_{contrato['id']}")
                             
-                            # 💡 UX MEJORA: Columna asimétrica para que los botones tengan buen tamaño pero no se expandan a lo loco
                             col_b1, col_b2, espacio_vacio = st.columns([1, 1, 2])
                             with col_b1:
                                 if st.button("Validar y Enviar", key=f"v_{contrato['id']}", use_container_width=True):
@@ -243,7 +237,7 @@ else:
                                     st.rerun()
 
                     with col_visor:
-                        st.subheader("📄 Descarga de Documento")
+                        st.subheader("📄 Visor de Documento")
                         display_pdf(contrato['archivo_b64'], contrato['archivo_nombre'])
 
     # --- TABLA DE TRAZABILIDAD ---
@@ -258,12 +252,17 @@ else:
             st.rerun()
 
     if contratos_db:
+        # LÓGICA DE FILTRADO POR ROL
         if rol_actual == "Asesor Comercial":
             datos_trazabilidad = [c for c in contratos_db if c['asesor'] == nombre_actual]
         else:
             datos_trazabilidad = contratos_db
             
         if datos_trazabilidad:
+            # Diccionario rápido para acceder a los bytes en la descarga histórica
+            diccionario_descargas = {c['id']: c for c in datos_trazabilidad}
+            
+            # DataFrame para visualización
             df = pd.DataFrame(datos_trazabilidad).drop(columns=['archivo_b64'])
             
             df['valor'] = df['valor'].apply(lambda x: f"${x:,.2f}") 
@@ -281,6 +280,29 @@ else:
             })
             
             st.dataframe(df_mostrar, use_container_width=True)
+            
+            # --- MÓDULO DE DESCARGA HISTÓRICA ---
+            st.markdown("#### 📥 Buscador y Descarga de Documentos")
+            col_sel, col_btn, col_vacia = st.columns([2, 2, 1])
+            
+            with col_sel:
+                opciones_descarga = df_mostrar['Radicado'].tolist()
+                id_seleccionado = st.selectbox("Seleccione el Radicado que desea descargar:", opciones_descarga)
+                
+            with col_btn:
+                st.write("") 
+                if id_seleccionado:
+                    contrato_info = diccionario_descargas[id_seleccionado]
+                    bytes_pdf = base64.b64decode(contrato_info['archivo_b64'])
+                    
+                    st.download_button(
+                        label=f"Descargar Archivo: {contrato_info['archivo_nombre']}",
+                        data=bytes_pdf,
+                        file_name=contrato_info['archivo_nombre'],
+                        mime="application/pdf",
+                        key=f"hist_dl_{id_seleccionado}",
+                        use_container_width=True
+                    )
         else:
             st.info("No tienes registros históricos en tu cuenta.")
     else:
