@@ -243,7 +243,7 @@ else:
                                     st.rerun()
 
                     with col_visor:
-                        st.subheader("📄 Visor de Documento")
+                        st.subheader("📄 Descarga de Documento")
                         display_pdf(contrato['archivo_b64'], contrato['archivo_nombre'])
 
     # --- TABLA DE TRAZABILIDAD ---
