@@ -24,7 +24,6 @@ def guardar_datos(datos):
         json.dump(datos, f, indent=4)
 
 # --- BASE DE DATOS SIMULADA DE USUARIOS ---
-# 💡 MEJORA: Se eliminaron los números de los roles para una presentación más limpia.
 USUARIOS = {
     "asesor1": {"pwd": "123", "rol": "Asesor Comercial", "nombre": "Carlos (Asesor)"},
     "asesor2": {"pwd": "123", "rol": "Asesor Comercial", "nombre": "Ana (Asesora)"},
@@ -46,12 +45,12 @@ def display_pdf(base64_pdf, nombre_archivo="documento.pdf"):
         bytes_pdf = base64.b64decode(base64_pdf)
         st.info("💡 Por políticas de seguridad del navegador, utilice el botón inferior para visualizar o descargar el documento de forma segura.")
         
+        # 💡 UX MEJORA: Se eliminó el ancho completo para que parezca un botón de descarga tradicional
         st.download_button(
             label=f"📥 Abrir / Descargar: {nombre_archivo}",
             data=bytes_pdf,
             file_name=nombre_archivo,
-            mime="application/pdf",
-            use_container_width=True
+            mime="application/pdf"
         )
     except Exception as e:
         st.error("Error al procesar el documento PDF para su visualización.")
@@ -69,6 +68,7 @@ if not st.session_state.logged_in:
             st.subheader("Iniciar Sesión")
             usuario_input = st.text_input("Usuario")
             password_input = st.text_input("Contraseña", type="password")
+            # 💡 Aquí sí se justifica el ancho completo para el login
             submit_button = st.form_submit_button("Ingresar", use_container_width=True)
             
             if submit_button:
@@ -114,7 +114,6 @@ else:
         st.header("📄 Registro de Nuevo Contrato")
         
         with st.form("form_carga", clear_on_submit=True):
-            # 💡 MEJORA: Layout del formulario reestructurado
             st.info(f"👤 Gestor activo: **{nombre_actual}**")
             
             col_a, col_b = st.columns(2)
@@ -123,9 +122,9 @@ else:
             with col_b:
                 archivo = st.file_uploader("Subir Contrato Firmado (PDF)", type=['pdf'])
             
-            st.write("") # Espacio para respirar
-            # Botón de ancho completo para mejor cierre visual
-            enviar = st.form_submit_button("Enviar a Verificación", use_container_width=True)
+            st.write("") 
+            # 💡 UX MEJORA: Botón de tamaño natural, no expandido
+            enviar = st.form_submit_button("Enviar a Verificación")
             
             if enviar:
                 if archivo:
@@ -151,7 +150,6 @@ else:
 
     # --- LÓGICA COMÚN PARA ROLES DE APROBACIÓN ---
     else:
-        # 💡 MEJORA: Nombres de roles actualizados en el mapeo
         estados_por_rol = {
             "Cumplimiento": "En Verificación",
             "Dirección Comercial": "Pendiente Autorización",
@@ -165,14 +163,20 @@ else:
             st.info("No tienes tareas pendientes en tu bandeja de entrada en este momento.")
         else:
             for i, contrato in enumerate(pendientes):
-                with st.expander(f"EXPEDIENTE {contrato['id']} - {contrato['asesor']}"):
+                # 💡 UX MEJORA: Un título de expediente más robusto
+                with st.expander(f"📂 EXPEDIENTE: {contrato['id']} | Asesor: {contrato['asesor']}"):
                     col_info, col_visor = st.columns([1, 1]) 
                     
                     with col_info:
-                        st.subheader("Datos del Proceso")
-                        st.write(f"**Asesor:** {contrato['asesor']}")
-                        st.write(f"**Fecha Carga:** {contrato['fecha']}")
-                        st.write(f"**Valor:** ${contrato['valor']:,.2f}") # Formato moneda
+                        st.subheader("📋 Datos del Proceso")
+                        
+                        # 💡 UX MEJORA: Uso de métricas y columnas internas para mejor jerarquía visual
+                        col_m1, col_m2 = st.columns(2)
+                        with col_m1:
+                            st.write(f"**Asesor:** {contrato['asesor']}")
+                            st.write(f"**Fecha Carga:** {contrato['fecha']}")
+                        with col_m2:
+                            st.metric("Valor (Sin IVA)", f"${contrato['valor']:,.2f}") 
                         
                         if contrato['sagrilaft_req']:
                             st.warning("⚠️ Requiere Validación SAGRILAFT")
@@ -182,14 +186,16 @@ else:
                         # --- ACCIONES ---
                         if rol_actual == "Cumplimiento":
                             coment = st.text_area("Notas de Verificación", key=f"n_{contrato['id']}")
-                            col_btn1, col_btn2 = st.columns(2)
-                            with col_btn1:
+                            
+                            # 💡 UX MEJORA: Columna asimétrica para que los botones tengan buen tamaño pero no se expandan a lo loco
+                            col_b1, col_b2, espacio_vacio = st.columns([1, 1, 2])
+                            with col_b1:
                                 if st.button("Validar y Enviar", key=f"v_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Pendiente Autorización'
                                     contratos_db[idx_real]['comentarios'] = f"Cumplimiento: {coment}" if coment else ""
                                     guardar_datos(contratos_db)
                                     st.rerun()
-                            with col_btn2:
+                            with col_b2:
                                 if st.button("Rechazar", key=f"r_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Rechazado'
                                     contratos_db[idx_real]['comentarios'] = f"Rechazo Cumplimiento: {coment}"
@@ -197,17 +203,19 @@ else:
                                     st.rerun()
                                 
                         elif rol_actual == "Dirección Comercial":
-                            st.write(f"**Historial de Notas:** {contrato['comentarios']}")
+                            if contrato['comentarios']:
+                                st.info(f"**Historial de Notas:**\n{contrato['comentarios']}")
                             coment_dir = st.text_area("Observaciones de Dirección", key=f"nd_{contrato['id']}")
-                            col_btn1, col_btn2 = st.columns(2)
-                            with col_btn1:
+                            
+                            col_b1, col_b2, espacio_vacio = st.columns([1, 1, 2])
+                            with col_b1:
                                 if st.button("Autorizar", key=f"a_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Para Facturar'
                                     if coment_dir:
                                         contratos_db[idx_real]['comentarios'] += f" | Dirección: {coment_dir}"
                                     guardar_datos(contratos_db)
                                     st.rerun()
-                            with col_btn2:
+                            with col_b2:
                                 if st.button("Rechazar", key=f"rd_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Rechazado'
                                     contratos_db[idx_real]['comentarios'] += f" | Rechazo Dirección: {coment_dir}"
@@ -215,17 +223,19 @@ else:
                                     st.rerun()
                                 
                         elif rol_actual == "Contabilidad":
-                            st.write(f"**Historial de Notas:** {contrato['comentarios']}")
+                            if contrato['comentarios']:
+                                st.info(f"**Historial de Notas:**\n{contrato['comentarios']}")
                             coment_cont = st.text_area("Observaciones de Contabilidad", key=f"nc_{contrato['id']}")
-                            col_btn1, col_btn2 = st.columns(2)
-                            with col_btn1:
+                            
+                            col_b1, col_b2, espacio_vacio = st.columns([1, 1, 2])
+                            with col_b1:
                                 if st.button("Facturado y Cerrar", key=f"f_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Finalizado'
                                     if coment_cont:
                                         contratos_db[idx_real]['comentarios'] += f" | Contabilidad: {coment_cont}"
                                     guardar_datos(contratos_db)
                                     st.rerun()
-                            with col_btn2:
+                            with col_b2:
                                 if st.button("Rechazar", key=f"rc_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Rechazado'
                                     contratos_db[idx_real]['comentarios'] += f" | Rechazo Contabilidad: {coment_cont}"
@@ -233,7 +243,7 @@ else:
                                     st.rerun()
 
                     with col_visor:
-                        st.subheader("Visor de Documento")
+                        st.subheader("📄 Visor de Documento")
                         display_pdf(contrato['archivo_b64'], contrato['archivo_nombre'])
 
     # --- TABLA DE TRAZABILIDAD ---
@@ -248,7 +258,6 @@ else:
             st.rerun()
 
     if contratos_db:
-        # LÓGICA DE FILTRADO POR ROL
         if rol_actual == "Asesor Comercial":
             datos_trazabilidad = [c for c in contratos_db if c['asesor'] == nombre_actual]
         else:
@@ -257,11 +266,9 @@ else:
         if datos_trazabilidad:
             df = pd.DataFrame(datos_trazabilidad).drop(columns=['archivo_b64'])
             
-            # 💡 MEJORA: Formateo visual de las columnas para el negocio
-            df['valor'] = df['valor'].apply(lambda x: f"${x:,.2f}") # Formato moneda
-            df['sagrilaft_req'] = df['sagrilaft_req'].apply(lambda x: "🔴 Sí" if x else "🟢 No") # Emojis visuales
+            df['valor'] = df['valor'].apply(lambda x: f"${x:,.2f}") 
+            df['sagrilaft_req'] = df['sagrilaft_req'].apply(lambda x: "🔴 Sí" if x else "🟢 No") 
             
-            # 💡 MEJORA: Renombrado de columnas para la tabla final
             df_mostrar = df.rename(columns={
                 'id': 'Radicado',
                 'asesor': 'Asesor',
