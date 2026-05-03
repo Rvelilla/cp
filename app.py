@@ -121,7 +121,7 @@ else:
                 archivo = st.file_uploader("Subir Contrato Firmado (PDF)", type=['pdf'])
             
             st.write("") 
-            enviar = st.form_submit_button("Enviar a Verificación")
+            enviar = st.form_submit_button("Enviar a Verificación", use_container_width=True)
             
             if enviar:
                 if archivo:
@@ -240,7 +240,7 @@ else:
                         st.subheader("📄 Visor de Documento")
                         display_pdf(contrato['archivo_b64'], contrato['archivo_nombre'])
 
-    # --- TABLA DE TRAZABILIDAD ---
+    # --- TABLA DE TRAZABILIDAD (CUSTOM GRID) ---
     st.markdown("---")
     
     col_titulo, col_actualizar = st.columns([5, 1])
@@ -252,57 +252,63 @@ else:
             st.rerun()
 
     if contratos_db:
-        # LÓGICA DE FILTRADO POR ROL
         if rol_actual == "Asesor Comercial":
             datos_trazabilidad = [c for c in contratos_db if c['asesor'] == nombre_actual]
         else:
             datos_trazabilidad = contratos_db
             
         if datos_trazabilidad:
-            # Diccionario rápido para acceder a los bytes en la descarga histórica
-            diccionario_descargas = {c['id']: c for c in datos_trazabilidad}
+            # Función auxiliar para alinear verticalmente el texto con los botones de descarga
+            def celda_texto(texto):
+                st.markdown(f"<div style='margin-top: 8px; font-size: 0.9rem;'>{texto}</div>", unsafe_allow_html=True)
             
-            # DataFrame para visualización
-            df = pd.DataFrame(datos_trazabilidad).drop(columns=['archivo_b64'])
+            # Estilos de encabezado
+            st.markdown("""
+                <style>
+                .header-col { font-weight: 600; color: #a1a1aa; font-size: 0.85rem; padding-bottom: 5px;}
+                </style>
+            """, unsafe_allow_html=True)
             
-            df['valor'] = df['valor'].apply(lambda x: f"${x:,.2f}") 
-            df['sagrilaft_req'] = df['sagrilaft_req'].apply(lambda x: "🔴 Sí" if x else "🟢 No") 
+            # 1. ENCABEZADOS DE LA CUADRÍCULA
+            h_cols = st.columns([1.2, 1.5, 1.2, 3, 1.5, 1.5, 1.2, 2])
+            h_cols[0].markdown("<div class='header-col'>Radicado</div>", unsafe_allow_html=True)
+            h_cols[1].markdown("<div class='header-col'>Asesor</div>", unsafe_allow_html=True)
+            h_cols[2].markdown("<div class='header-col'>Valor (Sin IVA)</div>", unsafe_allow_html=True)
+            h_cols[3].markdown("<div class='header-col'>Documento</div>", unsafe_allow_html=True)
+            h_cols[4].markdown("<div class='header-col'>Estado Actual</div>", unsafe_allow_html=True)
+            h_cols[5].markdown("<div class='header-col'>Fecha Registro</div>", unsafe_allow_html=True)
+            h_cols[6].markdown("<div class='header-col'>SAGRILAFT</div>", unsafe_allow_html=True)
+            h_cols[7].markdown("<div class='header-col'>Observaciones</div>", unsafe_allow_html=True)
             
-            df_mostrar = df.rename(columns={
-                'id': 'Radicado',
-                'asesor': 'Asesor',
-                'valor': 'Valor (Sin IVA)',
-                'archivo_nombre': 'Documento',
-                'estado': 'Estado Actual',
-                'fecha': 'Fecha de Registro',
-                'sagrilaft_req': 'Req. SAGRILAFT',
-                'comentarios': 'Observaciones'
-            })
+            st.markdown("<hr style='margin: 0; padding: 0;'>", unsafe_allow_html=True)
             
-            st.dataframe(df_mostrar, use_container_width=True)
-            
-            # --- MÓDULO DE DESCARGA HISTÓRICA ---
-            st.markdown("#### 📥 Buscador y Descarga de Documentos")
-            col_sel, col_btn, col_vacia = st.columns([2, 2, 1])
-            
-            with col_sel:
-                opciones_descarga = df_mostrar['Radicado'].tolist()
-                id_seleccionado = st.selectbox("Seleccione el Radicado que desea descargar:", opciones_descarga)
+            # 2. FILAS DE DATOS
+            for c in datos_trazabilidad:
+                row = st.columns([1.2, 1.5, 1.2, 3, 1.5, 1.5, 1.2, 2])
                 
-            with col_btn:
-                st.write("") 
-                if id_seleccionado:
-                    contrato_info = diccionario_descargas[id_seleccionado]
-                    bytes_pdf = base64.b64decode(contrato_info['archivo_b64'])
-                    
+                with row[0]: celda_texto(c['id'])
+                with row[1]: celda_texto(c['asesor'])
+                with row[2]: celda_texto(f"${c['valor']:,.2f}")
+                
+                # LA MAGIA: El botón de descarga simulando un hipervínculo en la columna del documento
+                with row[3]:
+                    bytes_pdf = base64.b64decode(c['archivo_b64'])
                     st.download_button(
-                        label=f"Descargar Archivo: {contrato_info['archivo_nombre']}",
+                        label=f"📄 {c['archivo_nombre']}",
                         data=bytes_pdf,
-                        file_name=contrato_info['archivo_nombre'],
+                        file_name=c['archivo_nombre'],
                         mime="application/pdf",
-                        key=f"hist_dl_{id_seleccionado}",
+                        key=f"grid_dl_{c['id']}",
                         use_container_width=True
                     )
+                
+                with row[4]: celda_texto(c['estado'])
+                with row[5]: celda_texto(c['fecha'])
+                with row[6]: celda_texto("🔴 Sí" if c['sagrilaft_req'] else "🟢 No")
+                with row[7]: celda_texto(c['comentarios'])
+                
+                st.markdown("<hr style='margin: 0; padding: 0; border-top: 1px solid #3f3f46;'>", unsafe_allow_html=True)
+
         else:
             st.info("No tienes registros históricos en tu cuenta.")
     else:
