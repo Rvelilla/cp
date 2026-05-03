@@ -38,10 +38,25 @@ if 'logged_in' not in st.session_state:
 if 'usuario_actual' not in st.session_state:
     st.session_state.usuario_actual = None
 
-# Función para mostrar el PDF desde Base64
-def display_pdf(base64_pdf):
-    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
-    st.markdown(pdf_display, unsafe_allow_html=True)
+# --- NUEVA FUNCIÓN DE VISUALIZACIÓN SEGURA (OPCIÓN 1) ---
+def display_pdf(base64_pdf, nombre_archivo="documento.pdf"):
+    """Decodifica el PDF y ofrece un botón de descarga/apertura nativa del navegador"""
+    try:
+        # Decodificamos el base64 de vuelta a bytes
+        bytes_pdf = base64.b64decode(base64_pdf)
+        
+        st.info("💡 Por políticas de seguridad del navegador, utilice el botón inferior para visualizar o descargar el documento de forma segura.")
+        
+        # Botón de descarga/visualización nativo
+        st.download_button(
+            label=f"📥 Abrir / Descargar: {nombre_archivo}",
+            data=bytes_pdf,
+            file_name=nombre_archivo,
+            mime="application/pdf",
+            use_container_width=True
+        )
+    except Exception as e:
+        st.error("Error al procesar el documento PDF para su visualización.")
 
 # ---------------------------------------------------------
 # PANTALLA DE LOGIN
@@ -83,13 +98,12 @@ else:
     # Cargar la base de datos fresca
     contratos_db = cargar_datos()
 
-    # --- BARRA LATERAL (Solo para perfil y salida) ---
+    # --- BARRA LATERAL ---
     st.sidebar.title("Perfil de Usuario")
     st.sidebar.write(f"**Nombre:** {nombre_actual}")
     st.sidebar.write(f"**Rol:** {rol_actual}")
     st.sidebar.divider()
     
-    # El botón de actualizar ya no está aquí, solo el de cerrar sesión
     if st.sidebar.button("Cerrar Sesión", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.usuario_actual = None
@@ -149,7 +163,7 @@ else:
         else:
             for i, contrato in enumerate(pendientes):
                 with st.expander(f"EXPEDIENTE {contrato['id']} - {contrato['asesor']}"):
-                    col_info, col_visor = st.columns([1, 2])
+                    col_info, col_visor = st.columns([1, 1]) # Ajustado para que el visor y datos tengan el mismo ancho
                     
                     with col_info:
                         st.subheader("Datos del Proceso")
@@ -217,17 +231,16 @@ else:
 
                     with col_visor:
                         st.subheader("Visor de Documento")
-                        display_pdf(contrato['archivo_b64'])
+                        # Llamamos a la función segura, pasándole el nombre original del archivo
+                        display_pdf(contrato['archivo_b64'], contrato['archivo_nombre'])
 
     # --- TABLA DE TRAZABILIDAD ---
     st.markdown("---")
     
-    # NUEVO: Diseño en columnas para la cabecera de la tabla
     col_titulo, col_actualizar = st.columns([5, 1])
     with col_titulo:
         st.subheader("📊 Tablero de Trazabilidad en Tiempo Real")
     with col_actualizar:
-        # Añadimos un pequeño espacio para alinear el botón con el texto del subtítulo
         st.write("") 
         if st.button("🔄 Actualizar Datos", use_container_width=True):
             st.rerun()
