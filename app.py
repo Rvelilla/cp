@@ -27,9 +27,9 @@ def guardar_datos(datos):
 USUARIOS = {
     "asesor1": {"pwd": "123", "rol": "Asesor Comercial", "nombre": "Carlos (Asesor)"},
     "asesor2": {"pwd": "123", "rol": "Asesor Comercial", "nombre": "Ana (Asesora)"},
-    "cumplimiento": {"pwd": "123", "rol": "Cumplimiento", "nombre": "Equipo de Cumplimiento"},
-    "direccion": {"pwd": "123", "rol": "Dirección Comercial", "nombre": "Dirección General"},
-    "contabilidad": {"pwd": "123", "rol": "Contabilidad", "nombre": "Área Contable"}
+    "contabilidad": {"pwd": "123", "rol": "Contabilidad", "nombre": "Mariela"},
+    "comercial": {"pwd": "123", "rol": "Dirección Comercial", "nombre": "Luis"},
+    "produccion": {"pwd": "123", "rol": "Producción", "nombre": "Equipo de Producción"}
 }
 
 # --- INICIALIZACIÓN DE ESTADOS DE SESIÓN ---
@@ -80,8 +80,8 @@ if not st.session_state.logged_in:
         
         st.markdown("""
         **Credenciales de prueba:**
-        * Asesores: `asesor1`/`asesor2` (Clave: 123)
-        * Aprobadores: `cumplimiento`, `direccion`, `contabilidad` (Clave: 123)
+        * Asesores: `asesor1`/`asesor2`(Clave: 123)
+        * Aprobadores: `contabilidad`, `comercial`, `produccion`(Clave: 123)
         """)
 
 # ---------------------------------------------------------
@@ -148,9 +148,9 @@ else:
     # --- LÓGICA COMÚN PARA ROLES DE APROBACIÓN ---
     else:
         estados_por_rol = {
-            "Cumplimiento": "En Verificación",
+            "Contabilidad": "En Verificación",
             "Dirección Comercial": "Pendiente Autorización",
-            "Contabilidad": "Para Facturar"
+            "Producción": "Para Fabricar"
         }
         estado_buscado = estados_por_rol.get(rol_actual)
         
@@ -179,60 +179,60 @@ else:
                         idx_real = next((index for (index, d) in enumerate(contratos_db) if d["id"] == contrato["id"]), None)
                         
                         # --- ACCIONES ---
-                        if rol_actual == "Cumplimiento":
+                        if rol_actual == "Contabilidad":
                             coment = st.text_area("Notas de Verificación", key=f"n_{contrato['id']}")
                             
                             col_b1, col_b2, espacio_vacio = st.columns([1, 1, 2])
                             with col_b1:
                                 if st.button("Validar y Enviar", key=f"v_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Pendiente Autorización'
-                                    contratos_db[idx_real]['comentarios'] = f"Cumplimiento: {coment}" if coment else ""
+                                    contratos_db[idx_real]['comentarios'] = f"Contabilidad: {coment}" if coment else ""
                                     guardar_datos(contratos_db)
                                     st.rerun()
                             with col_b2:
                                 if st.button("Rechazar", key=f"r_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Rechazado'
-                                    contratos_db[idx_real]['comentarios'] = f"Rechazo Cumplimiento: {coment}"
+                                    contratos_db[idx_real]['comentarios'] = f"Rechazo Contabilidad: {coment}"
                                     guardar_datos(contratos_db)
                                     st.rerun()
                                 
                         elif rol_actual == "Dirección Comercial":
                             if contrato['comentarios']:
                                 st.info(f"**Historial de Notas:**\n{contrato['comentarios']}")
-                            coment_dir = st.text_area("Observaciones de Dirección", key=f"nd_{contrato['id']}")
+                            coment_dir = st.text_area("Observaciones de Dirección Comercial", key=f"nd_{contrato['id']}")
                             
                             col_b1, col_b2, espacio_vacio = st.columns([1, 1, 2])
                             with col_b1:
                                 if st.button("Autorizar", key=f"a_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Para Facturar'
                                     if coment_dir:
-                                        contratos_db[idx_real]['comentarios'] += f" | Dirección: {coment_dir}"
+                                        contratos_db[idx_real]['comentarios'] += f" | Dirección Comercial: {coment_dir}"
                                     guardar_datos(contratos_db)
                                     st.rerun()
                             with col_b2:
                                 if st.button("Rechazar", key=f"rd_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Rechazado'
-                                    contratos_db[idx_real]['comentarios'] += f" | Rechazo Dirección: {coment_dir}"
+                                    contratos_db[idx_real]['comentarios'] += f" | Rechazo Dirección Comercial: {coment_dir}"
                                     guardar_datos(contratos_db)
                                     st.rerun()
                                 
-                        elif rol_actual == "Contabilidad":
+                        elif rol_actual == "Producción":
                             if contrato['comentarios']:
                                 st.info(f"**Historial de Notas:**\n{contrato['comentarios']}")
-                            coment_cont = st.text_area("Observaciones de Contabilidad", key=f"nc_{contrato['id']}")
+                            coment_cont = st.text_area("Observaciones de Producción", key=f"nc_{contrato['id']}")
                             
                             col_b1, col_b2, espacio_vacio = st.columns([1, 1, 2])
                             with col_b1:
                                 if st.button("Facturado y Cerrar", key=f"f_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Finalizado'
                                     if coment_cont:
-                                        contratos_db[idx_real]['comentarios'] += f" | Contabilidad: {coment_cont}"
+                                        contratos_db[idx_real]['comentarios'] += f" | Producción: {coment_cont}"
                                     guardar_datos(contratos_db)
                                     st.rerun()
                             with col_b2:
                                 if st.button("Rechazar", key=f"rc_{contrato['id']}", use_container_width=True):
                                     contratos_db[idx_real]['estado'] = 'Rechazado'
-                                    contratos_db[idx_real]['comentarios'] += f" | Rechazo Contabilidad: {coment_cont}"
+                                    contratos_db[idx_real]['comentarios'] += f" | Rechazo Producción: {coment_cont}"
                                     guardar_datos(contratos_db)
                                     st.rerun()
 
